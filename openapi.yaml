@@ -1,0 +1,290 @@
+openapi: 3.1.0
+info:
+  title: Sports-League Scoreboard API
+  description: |
+    Contract for a single-league scoreboard: teams, append-only match results,
+    and a standings table computed on the server.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8091
+    description: Local development
+tags:
+  - name: teams
+  - name: matches
+  - name: standings
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Liveness check
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /teams:
+    get:
+      operationId: listTeams
+      tags: [teams]
+      summary: List all teams
+      responses:
+        "200":
+          description: Teams in the league
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamList"
+    post:
+      operationId: createTeam
+      tags: [teams]
+      summary: Add a team
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeamRequest"
+      responses:
+        "201":
+          description: Team created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /matches:
+    get:
+      operationId: listMatches
+      tags: [matches]
+      summary: List recorded matches, most recent first
+      responses:
+        "200":
+          description: Match history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchList"
+    post:
+      operationId: createMatch
+      tags: [matches]
+      summary: Record a match result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMatchRequest"
+      responses:
+        "201":
+          description: Match recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Match"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+  /standings:
+    get:
+      operationId: getStandings
+      tags: [standings]
+      summary: Computed standings table
+      description: |
+        Ranked by points descending, then goal difference descending,
+        then goals for descending. Points: 3 for a win, 1 for a draw, 0 for a loss.
+      responses:
+        "200":
+          description: Standings rows for every team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Standings"
+components:
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Referenced resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unprocessable:
+      description: Semantic validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+    Team:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 40
+    TeamList:
+      type: object
+      required: [teams]
+      properties:
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/Team"
+    CreateTeamRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 40
+    Match:
+      type: object
+      required:
+        - id
+        - home_team_id
+        - away_team_id
+        - home_score
+        - away_score
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        home_team_id:
+          type: string
+          format: uuid
+        away_team_id:
+          type: string
+          format: uuid
+        home_score:
+          type: integer
+          minimum: 0
+        away_score:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+    MatchList:
+      type: object
+      required: [matches]
+      properties:
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/Match"
+    CreateMatchRequest:
+      type: object
+      required: [home_team_id, away_team_id, home_score, away_score]
+      properties:
+        home_team_id:
+          type: string
+          format: uuid
+        away_team_id:
+          type: string
+          format: uuid
+        home_score:
+          type: integer
+          minimum: 0
+        away_score:
+          type: integer
+          minimum: 0
+    StandingRow:
+      type: object
+      required:
+        - team_id
+        - team_name
+        - played
+        - won
+        - drawn
+        - lost
+        - goals_for
+        - goals_against
+        - goal_difference
+        - points
+      properties:
+        team_id:
+          type: string
+          format: uuid
+        team_name:
+          type: string
+        played:
+          type: integer
+          minimum: 0
+        won:
+          type: integer
+          minimum: 0
+        drawn:
+          type: integer
+          minimum: 0
+        lost:
+          type: integer
+          minimum: 0
+        goals_for:
+          type: integer
+          minimum: 0
+        goals_against:
+          type: integer
+          minimum: 0
+        goal_difference:
+          type: integer
+        points:
+          type: integer
+          minimum: 0
+    Standings:
+      type: object
+      required: [rows]
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/StandingRow"
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - validation_error
+                - duplicate_team
+                - team_not_found
+                - same_team
+            message:
+              type: string
+              description: Human-readable explanation
