@@ -1,0 +1,19 @@
+.git
+.github
+
+# Dependencies and build output are rebuilt inside the image
+**/.venv
+**/node_modules
+**/dist
+**/__pycache__
+**/.pytest_cache
+
+# Never ship local env files or local databases
+**/.env
+**/.env.*
+backend/data
+
+# Not needed at runtime
+backend/tests
+docs
+*.md
