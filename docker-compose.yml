@@ -1,0 +1,32 @@
+# Local stack: the app (API + built UI) and Postgres.
+#   docker compose up --build      -> http://localhost:8000
+#   docker compose down            -> stop (data is kept)
+#   docker compose down -v         -> stop and delete the database volume
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: league
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d league"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/league
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:

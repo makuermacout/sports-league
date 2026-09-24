@@ -1,7 +1,10 @@
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.db import init_db
@@ -49,6 +52,14 @@ def create_app(*, init_database: bool = True) -> FastAPI:
         def on_startup() -> None:
             init_db()
 
+    # Serve the built frontend (Docker image). This must stay LAST: the "/"
+    # mount matches every path, so the API routes above have to be registered
+    # first to take priority.
+    if settings.static_dir:
+        static_dir = Path(settings.static_dir)
+        if static_dir.is_dir():
+            app.mount("/", StaticFiles(directory=static_dir, html=True), name="ui")
+
     return app
 
 
@@ -60,6 +71,3 @@ def _first_validation_message(exc: RequestValidationError) -> str:
     loc = ".".join(str(part) for part in err.get("loc", []) if part != "body")
     msg = err.get("msg", "Invalid request.")
     return f"{loc}: {msg}" if loc else msg
-
-
-app = create_app()
